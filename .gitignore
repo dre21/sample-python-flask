@@ -1,0 +1,41 @@
+# Byte-compiled / optimized / cached files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Databases (SQLite, etc.)
+*.db
+*.sqlite
+*.sqlite3
+
+# Flask instance folder
+instance/
+
+# Alembic / Flask-Migrate
+# Note: migrations/versions/*.py IS committed — only ignore pycache inside
+migrations/__pycache__/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDEs & editors
+.idea/
+.vscode/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
