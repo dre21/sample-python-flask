@@ -2,6 +2,15 @@ from datetime import datetime
 from utils import db
 
 
+class Category(db.Model):
+    __tablename__ = 'categories'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    name        = db.Column(db.String(100), nullable=False)
+
+    # define the relationship to products
+    products    = db.relationship('Product', backref='Category', lazy=True)
+
 class Product(db.Model):
     __tablename__ = 'products'
 
@@ -13,6 +22,10 @@ class Product(db.Model):
     stock_qty   = db.Column(db.Integer, default=0)
     is_active   = db.Column(db.Boolean, default=True)
     created_at  = db.Column(db.DateTime, default=datetime.now)
+
+    # Foreign key
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
+
 
     def show_detail(self):
         return {

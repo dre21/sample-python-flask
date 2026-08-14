@@ -1,7 +1,7 @@
 from flask import Flask
 from routes import products_bp, users_bp
 from utils import db
-from models import Product, User
+from models import Product, User, Category
 from flask_migrate import Migrate
 
 def init_app():
@@ -10,7 +10,7 @@ def init_app():
 
 
     # Configure the app
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://andresta:Andre1234@159.69.111.83/test_andre'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://andresta:Andre135@159.69.111.83/test_andre'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # set up the database
