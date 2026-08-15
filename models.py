@@ -83,6 +83,9 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
+    # define the relationship to products
+    orders    = db.relationship('Order', backref='user', lazy=True)
+
     def to_dict(self):
         # TODO: Return dict WITHOUT password_hash
         return {

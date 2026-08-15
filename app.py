@@ -1,5 +1,5 @@
 from flask import Flask
-from routes import products_bp, users_bp
+from routes import products_bp, users_bp, orders_bp
 from utils import db
 from models import Product, User, Category
 from flask_migrate import Migrate
@@ -23,6 +23,7 @@ def init_app():
     print("Registering blueprints...")
     app.register_blueprint(products_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(orders_bp)
 
 
     # with app.app_context():

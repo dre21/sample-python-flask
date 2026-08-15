@@ -1,11 +1,12 @@
 from flask import Blueprint, jsonify, request
-from models import Product, User, Category
+from models import Product, User, Category, Order
 from utils import db
 from sqlalchemy.exc import IntegrityError
 
 
 products_bp = Blueprint('products', __name__, url_prefix='/store')
 users_bp = Blueprint('users', __name__, url_prefix='/users')
+orders_bp = Blueprint('orders', __name__)
 
 
 @products_bp.route('/products', methods=['GET'])
@@ -122,3 +123,18 @@ def get_user(user_id):
     except Exception as e:
         print(f"Error fetching user: {e}")
         return jsonify({"message": "Error fetching user", "status": "error"}), 500
+
+
+# GET /orders/<id>
+@orders_bp.route('/orders/<int:order_id>', methods=['GET'])
+def get_order_by_id(order_id):
+    order = Order.query.get_or_404(order_id)
+    return jsonify({
+        "id": order.id,
+        "user_id": order.user.username,
+        "total": order.total,
+        "products": [
+            p.show_list() for p in order.products
+        ]
+    }), 200
+
