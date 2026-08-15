@@ -50,6 +50,28 @@ class Product(db.Model):
             'is_active':   self.is_active                
         }
 
+# TODO 1: Define the association table using db.Table()
+# It needs: order_id (FK → orders.id, PK) and product_id (FK → products.id, PK)
+order_products = db.Table(
+    'order_products',
+    db.Column('order_id', db.Integer, db.ForeignKey('orders.id'), primary_key = True),
+    db.Column('product_id', db.Integer, db.ForeignKey('products.id'), primary_key = True)
+)
+
+
+# TODO 2: Define the Order model
+class Order(db.Model):
+    __tablename__ = 'orders'
+    # YOUR CODE HERE — id, total, user_id columns + products relationship
+    id          = db.Column(db.Integer, primary_key=True)
+    total       = db.Column(db.Float, nullable=False)
+
+    # Foreign key
+    user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # define the relationship to products 
+    products    = db.Relationship('Product', secondary=order_products, backref='orders')
+
 
 class User(db.Model):
     __tablename__ = 'users'
