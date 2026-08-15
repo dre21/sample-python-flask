@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from models import Product, User
+from models import Product, User, Category
 from utils import db
 from sqlalchemy.exc import IntegrityError
 
@@ -71,6 +71,17 @@ def delete_product(product_id):
                     "product": product.show_detail(),
                     "status": "ok"}), 200
 
+
+@products_bp.route('/categories/<int:category_id>', methods=['GET'])
+def get_category(category_id):
+    category = Category.query.get_or_404(category_id)
+    return jsonify({
+        'id': category.id,
+        'name': category.name,
+        'products' :[
+            p.show_list() for p in category.products
+        ]
+    }), 200
 
 
 
