@@ -9,7 +9,7 @@ class Category(db.Model):
     name        = db.Column(db.String(100), nullable=False)
 
     # define the relationship to products
-    products    = db.relationship('Product', backref='Category', lazy=True)
+    products    = db.relationship('Product', backref='category', lazy=True)
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -36,6 +36,7 @@ class Product(db.Model):
             'price':       self.price,
             'stock_qty':   self.stock_qty,
             'is_active':   self.is_active,
+            'category':    self.category.name if self.category else None,
             'created_at':  self.created_at.isoformat() if self.created_at else None,
         }
 
