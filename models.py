@@ -47,6 +47,7 @@ class Product(db.Model):
             'sku':         self.sku,
             'price':       self.price,
             'stock_qty':   self.stock_qty,
+            'category':    self.category.name if self.category else None,
             'is_active':   self.is_active                
         }
 

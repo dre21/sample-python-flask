@@ -36,7 +36,26 @@ def get_products():
               is_active:
                 type: boolean
     """
-    products = Product.query.all()
+    query = Product.query
+
+    print(f"arguments: {request.args}")
+
+    if 'name' in request.args:
+        print("filter by name")
+        name = request.args.get('name', type=str)
+        query = query.filter(Product.name.icontains(name))
+        
+    if 'category_id' in request.args:
+        print("filter by category")
+        category_id = request.args.get('category_id', type=int)
+        query = query.filter_by(category_id=category_id)
+
+    if 'max_price' in request.args:
+        print("filter by max price")
+        max_price = request.args.get('max_price', type=float)
+        query = query.filter(Product.price <= max_price)
+
+    products = query.all()
     return jsonify([product.show_list() for product in products]), 200
 
 
