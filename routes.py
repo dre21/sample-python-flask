@@ -55,8 +55,19 @@ def get_products():
         max_price = request.args.get('max_price', type=float)
         query = query.filter(Product.price <= max_price)
 
-    products = query.all()
-    return jsonify([product.show_list() for product in products]), 200
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    return jsonify({
+        "products": [product.show_list() for product in pagination.items],
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total": pagination.total,
+        "pages": pagination.pages
+    }), 200
 
 
 @products_bp.route('/products', methods=['POST'])
