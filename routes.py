@@ -15,26 +15,65 @@ def get_products():
     ---
     tags:
       - Products
+    parameters:
+      - in: query
+        name: name
+        type: string
+        required: false
+        description: Filter products by name (case-insensitive, partial match)
+      - in: query
+        name: category_id
+        type: integer
+        required: false
+        description: Filter products by category ID
+      - in: query
+        name: max_price
+        type: number
+        required: false
+        description: Filter products with price less than or equal to this value
+      - in: query
+        name: page
+        type: integer
+        required: false
+        default: 1
+        description: Page number for pagination
+      - in: query
+        name: per_page
+        type: integer
+        required: false
+        default: 10
+        description: Number of items per page
     responses:
       200:
-        description: A list of products
+        description: A paginated list of products
         schema:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-              name:
-                type: string
-              sku:
-                type: string
-              price:
-                type: number
-              stock_qty:
-                type: integer
-              is_active:
-                type: boolean
+          type: object
+          properties:
+            products:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  sku:
+                    type: string
+                  price:
+                    type: number
+                  stock_qty:
+                    type: integer
+                  is_active:
+                    type: boolean
+            page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            pages:
+              type: integer
     """
     query = Product.query
 
