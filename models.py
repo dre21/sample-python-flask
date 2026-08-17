@@ -11,6 +11,12 @@ class Category(db.Model):
     # define the relationship to products
     products    = db.relationship('Product', backref='category', lazy=True)
 
+    def to_dict(self):
+        return {
+            'id':   self.id,
+            'name': self.name,
+        }
+
 class Product(db.Model):
     __tablename__ = 'products'
 
@@ -51,6 +57,19 @@ class Product(db.Model):
             'is_active':   self.is_active                
         }
 
+    def to_dict(self):
+        return {
+            'id':          self.id,
+            'name':        self.name,
+            'sku':         self.sku,
+            'description': self.description,
+            'price':       self.price,
+            'stock_qty':   self.stock_qty,
+            'is_active':   self.is_active,
+            'category_id': self.category_id,
+            'created_at':  self.created_at.isoformat() if self.created_at else None,
+        }
+
 # TODO 1: Define the association table using db.Table()
 # It needs: order_id (FK → orders.id, PK) and product_id (FK → products.id, PK)
 order_products = db.Table(
@@ -72,6 +91,14 @@ class Order(db.Model):
 
     # define the relationship to products 
     products    = db.Relationship('Product', secondary=order_products, backref='orders')
+
+    def to_dict(self):
+        return {
+            'id':       self.id,
+            'total':    self.total,
+            'user_id':  self.user_id,
+            'products': [product.to_dict() for product in self.products],
+        }
 
 
 class User(db.Model):
