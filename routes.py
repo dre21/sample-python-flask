@@ -152,16 +152,44 @@ def create_product():
     """
     data = request.get_json()
 
+    # TODO 1: Guard — return 400 if body is missing or name/price absent
+    if not data or not data.get('name') or data.get('price') is None or not data.get('sku'):
+        return jsonify({"error": "Missing required fields: name, price, or sku"}), 400
+
+    # TODO 2: Read fields
+    name        = data.get('name')
+    sku         = data.get('sku')
+    description = data.get('description')
+    price       = data.get('price')
+    stock_qty   = data.get('stock_qty', 0)
+    is_active   = data.get('is_active', True)
+    category_id = data.get('category_id')
+
+    # Validate category_id exists if provided
+    if category_id is not None:
+        category = Category.query.get(category_id)
+        if category is None:
+            return jsonify({"error": f"Category with id {category_id} not found"}), 404
+
+    # TODO 3: Create Product, add to session, commit
     try:
-        product = Product(**data)
+        product = Product(
+            name=name,
+            sku=sku,
+            description=description,
+            price=price,
+            stock_qty=stock_qty,
+            is_active=is_active,
+            category_id=category_id
+        )
         db.session.add(product)
         db.session.commit()
-        return jsonify({"message": "Product created successfully",
-                        "product": product.show_detail(),
-                        "status": "ok"}), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": "Error creating product", "status": "error"}), 500
+        return jsonify({"error": "Error creating product", "details": str(e)}), 500
+
+    # TODO 4: Return 201 Created
+    return jsonify(product.to_dict()), 201
 
 
 @products_bp.route('/products/<int:product_id>', methods=['GET'])
