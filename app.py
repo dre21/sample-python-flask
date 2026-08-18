@@ -1,9 +1,10 @@
 from flask import Flask
 from flasgger import Swagger
 from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
 from config import Config
 from models import Product, User, Category  # noqa: F401 — needed for Migrate to detect models
-from routes import products_bp, users_bp, orders_bp
+from routes import products_bp, users_bp, orders_bp, auth_bp
 from utils import db
 
 
@@ -20,6 +21,9 @@ def init_app():
     # Set up Flask-Migrate
     migrate = Migrate(app, db)
 
+    # Set up JWT
+    jwt = JWTManager(app)
+
     # Set up Swagger
     swagger = Swagger(app)
 
@@ -28,6 +32,7 @@ def init_app():
     app.register_blueprint(products_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(orders_bp)
+    app.register_blueprint(auth_bp)
 
     print("Flask app initialized successfully.")
     return app

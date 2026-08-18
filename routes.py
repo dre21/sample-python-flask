@@ -1,12 +1,15 @@
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, create_access_token
 from models import Product, User, Category, Order
 from utils import db
 from sqlalchemy.exc import IntegrityError
+from auth import hash_password, check_password
 
 
 products_bp = Blueprint('products', __name__, url_prefix='/store')
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 orders_bp = Blueprint('orders', __name__)
+auth_bp = Blueprint('auth', __name__)
 
 
 @products_bp.route('/products', methods=['GET'])
@@ -110,11 +113,14 @@ def get_products():
 
 
 @products_bp.route('/products', methods=['POST'])
+@jwt_required()
 def create_product():
     """Create a new product
     ---
     tags:
       - Products
+    security:
+      - Bearer: []
     parameters:
       - in: body
         name: body
@@ -147,6 +153,8 @@ def create_product():
     responses:
       201:
         description: Product created successfully
+      401:
+        description: Unauthorized
       500:
         description: Error creating product
     """
@@ -239,11 +247,14 @@ def get_product(product_id):
 
 
 @products_bp.route('/products/<int:product_id>', methods=['PUT'])
+@jwt_required()
 def update_product(product_id):
     """Update a product
     ---
     tags:
       - Products
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: product_id
@@ -271,6 +282,8 @@ def update_product(product_id):
     responses:
       200:
         description: Product updated successfully
+      401:
+        description: Unauthorized
       404:
         description: Product not found
       500:
@@ -324,11 +337,14 @@ def update_product(product_id):
 
 
 @products_bp.route('/products/<int:product_id>', methods=['DELETE'])
+@jwt_required()
 def delete_product(product_id):
     """Delete a product
     ---
     tags:
       - Products
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: product_id
@@ -338,6 +354,8 @@ def delete_product(product_id):
     responses:
       200:
         description: Product deleted successfully
+      401:
+        description: Unauthorized
       404:
         description: Product not found
     """
@@ -415,7 +433,7 @@ def register_user():
           required:
             - username
             - email
-            - password_hash
+            - password
           properties:
             username:
               type: string
@@ -424,9 +442,9 @@ def register_user():
               type: string
               format: email
               example: "john@example.com"
-            password_hash:
+            password:
               type: string
-              example: "hashed_password_123"
+              example: "securepassword123"
     responses:
       201:
         description: User registered successfully
@@ -439,10 +457,15 @@ def register_user():
     """
     data = request.get_json()
     try:
-        for field in ['username', 'email', 'password_hash']:
+        for field in ['username', 'email', 'password']:
             if field not in data:
                 return jsonify({"message": f"Missing required field: {field}", "status": "error"}), 400
-        user = User(**data)
+        
+        user = User(
+            username=data['username'],
+            email=data['email'],
+            password_hash=hash_password(data['password'])
+        )
         db.session.add(user)
         db.session.commit()
         return jsonify({"message": "User registered successfully",
@@ -588,4 +611,66 @@ def get_order_by_id(order_id):
         "products": [
             p.show_list() for p in order.products
         ]
+    }), 200
+
+
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    """Login and get a JWT token
+    ---
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+              format: email
+              example: "john@example.com"
+            password:
+              type: string
+              example: "securepassword123"
+    responses:
+      200:
+        description: Login successful, returns JWT token
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            token:
+              type: string
+            user:
+              type: object
+      400:
+        description: Missing email or password
+      401:
+        description: Invalid credentials
+    """
+    data = request.get_json()
+
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'message': 'Missing email or password', 'status': 'error'}), 400
+
+    user = User.query.filter_by(email=data['email']).first()
+
+    if user is None or not check_password(data['password'], user.password_hash):
+        return jsonify({'message': 'Invalid email or password', 'status': 'error'}), 401
+
+    token = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": user.role}
+    )
+
+    return jsonify({
+        'message': 'Login successful',
+        'token': token,
+        'user': user.to_dict()
     }), 200
