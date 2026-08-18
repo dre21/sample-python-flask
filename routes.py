@@ -276,21 +276,51 @@ def update_product(product_id):
       500:
         description: Error updating product
     """
-    data = request.get_json()
-    try:
-        product = Product.query.get(product_id)
-        if product is None:
-            return jsonify({"message": "Product not found", "status": "error"}), 404
 
-        for key, value in data.items():
-            if hasattr(product, key):
-                setattr(product, key, value)
+    # TODO 1: Parse request body — return 400 if None
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
+
+    if data.get('category_id') is not None:
+        category_id = data['category_id']
+        category = Category.query.get(category_id)
+        if category is None:
+            return jsonify({"error": f"Category with id {category_id} not found"}), 404
+            
+
+    # TODO 2: Fetch product — return 404 if not found
+    product = Product.query.get(product_id)
+    if product is None:
+        return jsonify({"error": f"Product {product_id} not found"}), 404
+
+
+    # TODO 3: Partial update — only update fields present in the body
+    if data.get('name') is not None:
+        product.name = data['name']
+    if data.get('sku') is not None:
+        product.sku = data['sku']
+    if data.get('description') is not None:
+        product.description = data['description']
+    if data.get('price') is not None:
+        product.price = data['price']
+    if data.get('stock_qty') is not None:
+        product.stock_qty = data['stock_qty']
+    if data.get('is_active') is not None:
+        product.is_active = data['is_active']
+    if data.get('category_id') is not None:
+        product.category_id = data['category_id']
+    # Validate category_id exists if provided
+    
+
+    # TODO 4: Commit and return updated product with 200
+    try:
         db.session.commit()
-        return jsonify({"message": "Product updated successfully", "product": product.show_detail(), "status": "ok"}), 200
     except Exception as e:
         db.session.rollback()
-        print(f"Error updating product: {e}")
-        return jsonify({"message": "Error updating product", "status": "error"}), 500
+        return jsonify({"error": "Error updating product", "details": str(e)}), 500
+
+    return jsonify(product.to_dict()), 200
 
 
 @products_bp.route('/products/<int:product_id>', methods=['DELETE'])
