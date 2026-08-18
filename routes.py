@@ -443,6 +443,44 @@ def get_user(user_id):
         return jsonify({"message": "Error fetching user", "status": "error"}), 500
 
 
+
+
+
+@orders_bp.route('/orders', methods=['GET'])
+def get_orders():
+    """Get all orders
+    ---
+    tags:
+      - Orders
+    responses:
+      200:
+        description: A list of all orders
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              total:
+                type: number
+              status:
+                type: string
+    """
+    orders = Order.query.all()
+    return jsonify([
+        {
+            "id": order.id,
+            "name": order.user.username,
+            "total": order.total,
+            "status": order.status,
+        }
+        for order in orders
+    ]), 200
+
+
 @orders_bp.route('/orders/<int:order_id>', methods=['GET'])
 def get_order_by_id(order_id):
     """Get an order by ID

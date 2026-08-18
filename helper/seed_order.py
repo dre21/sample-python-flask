@@ -36,35 +36,59 @@ def seed_orders():
         db.session.commit()
         print("  ✓ Cleared existing orders")
 
-        # Create orders with different product combinations
+        # Create orders with different product combinations and statuses
+        statuses = ['paid', 'pending', 'shipped', 'delivered', 'cancelled']
+
         orders_data = [
             {
                 'user': users[0],
-                'products': products[0:3],   # first 3 products
+                'products': products[0:3],
+                'status': 'paid',
             },
             {
                 'user': users[1],
-                'products': products[2:5],   # products 3-5
+                'products': products[2:5],
+                'status': 'pending',
             },
             {
                 'user': users[1],
-                'products': products[5:7],   # products 6-7
+                'products': products[5:7],
+                'status': 'shipped',
             },
             {
                 'user': users[2],
                 'products': [products[0], products[4], products[7]],
+                'status': 'delivered',
             },
             {
                 'user': users[0],
-                'products': products[8:12],  # products 9-12
+                'products': products[8:12],
+                'status': 'paid',
             },
             {
                 'user': users[3] if len(users) > 3 else users[0],
                 'products': [products[1], products[6], products[10]] if len(products) > 10 else products[0:2],
+                'status': 'cancelled',
             },
             {
                 'user': users[4] if len(users) > 4 else users[0],
                 'products': products[12:16] if len(products) > 12 else products[0:3],
+                'status': 'pending',
+            },
+            {
+                'user': users[2],
+                'products': products[1:4],
+                'status': 'paid',
+            },
+            {
+                'user': users[0],
+                'products': [products[5], products[9]] if len(products) > 9 else products[0:2],
+                'status': 'shipped',
+            },
+            {
+                'user': users[3] if len(users) > 3 else users[1],
+                'products': products[3:6],
+                'status': 'delivered',
             },
         ]
 
@@ -76,6 +100,7 @@ def seed_orders():
             order = Order(
                 total=round(total, 2),
                 user_id=data['user'].id,
+                status=data['status'],
             )
             order.products = order_products
             db.session.add(order)

@@ -85,6 +85,7 @@ class Order(db.Model):
     # YOUR CODE HERE — id, total, user_id columns + products relationship
     id          = db.Column(db.Integer, primary_key=True)
     total       = db.Column(db.Float, nullable=False)
+    status      = db.Column(db.String(20), nullable=True)
 
     # Foreign key
     user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
