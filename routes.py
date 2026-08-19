@@ -4,6 +4,7 @@ from models import Product, User, Category, Order
 from utils import db
 from sqlalchemy.exc import IntegrityError
 from auth import hash_password, check_password, roles_required
+from validation import validate_product_data
 
 
 products_bp = Blueprint('products', __name__, url_prefix='/store')
@@ -161,10 +162,13 @@ def create_product():
         description: Error creating product
     """
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
 
     # TODO 1: Guard — return 400 if body is missing or name/price absent
-    if not data or not data.get('name') or data.get('price') is None or not data.get('sku'):
-        return jsonify({"error": "Missing required fields: name, price, or sku"}), 400
+    error, code = validate_product_data(data)
+    if error:
+        return jsonify({"error": error}), code
 
     # TODO 2: Read fields
     name        = data.get('name')
@@ -310,6 +314,11 @@ def update_product(product_id):
     product = Product.query.get(product_id)
     if product is None:
         return jsonify({"error": f"Product {product_id} not found"}), 404
+
+    # validate input data before updateing
+    error, code = validate_product_data(data, False)
+    if error:
+        return jsonify({"error": error}), code
 
 
     # TODO 3: Partial update — only update fields present in the body
@@ -468,14 +477,15 @@ def register_user():
     """
     data = request.get_json()
     try:
-        for field in ['username', 'email', 'password']:
+        for field in ['username', 'email', 'password_hash', 'role']:
             if field not in data:
                 return jsonify({"message": f"Missing required field: {field}", "status": "error"}), 400
         
         user = User(
             username=data['username'],
             email=data['email'],
-            password_hash=hash_password(data['password'])
+            password_hash=hash_password(data['password_hash']),
+            role=data['role']
         )
         db.session.add(user)
         db.session.commit()
