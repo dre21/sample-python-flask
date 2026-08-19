@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, create_access_token
 from models import Product, User, Category, Order
 from utils import db
 from sqlalchemy.exc import IntegrityError
-from auth import hash_password, check_password
+from auth import hash_password, check_password, roles_required
 
 
 products_bp = Blueprint('products', __name__, url_prefix='/store')
@@ -113,7 +113,7 @@ def get_products():
 
 
 @products_bp.route('/products', methods=['POST'])
-@jwt_required()
+@roles_required('seller')
 def create_product():
     """Create a new product
     ---
@@ -155,6 +155,8 @@ def create_product():
         description: Product created successfully
       401:
         description: Unauthorized
+      403:
+        description: Forbidden — seller role required
       500:
         description: Error creating product
     """
@@ -247,7 +249,7 @@ def get_product(product_id):
 
 
 @products_bp.route('/products/<int:product_id>', methods=['PUT'])
-@jwt_required()
+@roles_required('seller')
 def update_product(product_id):
     """Update a product
     ---
@@ -284,6 +286,8 @@ def update_product(product_id):
         description: Product updated successfully
       401:
         description: Unauthorized
+      403:
+        description: Forbidden — seller role required
       404:
         description: Product not found
       500:
@@ -337,7 +341,7 @@ def update_product(product_id):
 
 
 @products_bp.route('/products/<int:product_id>', methods=['DELETE'])
-@jwt_required()
+@roles_required('admin')
 def delete_product(product_id):
     """Delete a product
     ---
@@ -356,6 +360,8 @@ def delete_product(product_id):
         description: Product deleted successfully
       401:
         description: Unauthorized
+      403:
+        description: Forbidden — admin role required
       404:
         description: Product not found
     """
@@ -371,11 +377,14 @@ def delete_product(product_id):
 
 
 @products_bp.route('/categories/<int:category_id>', methods=['GET'])
+@jwt_required()
 def get_category(category_id):
     """Get a category with its products
     ---
     tags:
       - Categories
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: category_id
@@ -405,6 +414,8 @@ def get_category(category_id):
                     type: string
                   price:
                     type: number
+      401:
+        description: Unauthorized
       404:
         description: Category not found
     """
@@ -528,11 +539,14 @@ def get_user(user_id):
 
 
 @orders_bp.route('/orders', methods=['GET'])
+@roles_required('user')
 def get_orders():
     """Get all orders
     ---
     tags:
       - Orders
+    security:
+      - Bearer: []
     responses:
       200:
         description: A list of all orders
@@ -549,6 +563,10 @@ def get_orders():
                 type: number
               status:
                 type: string
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
     """
     orders = Order.query.all()
     return jsonify([
@@ -563,11 +581,14 @@ def get_orders():
 
 
 @orders_bp.route('/orders/<int:order_id>', methods=['GET'])
+@roles_required('user')
 def get_order_by_id(order_id):
     """Get an order by ID
     ---
     tags:
       - Orders
+    security:
+      - Bearer: []
     parameters:
       - in: path
         name: order_id
@@ -600,6 +621,10 @@ def get_order_by_id(order_id):
                     type: string
                   price:
                     type: number
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
       404:
         description: Order not found
     """
