@@ -5,6 +5,7 @@ from flask_jwt_extended import JWTManager
 from config import Config
 from models import Product, User, Category  # noqa: F401 — needed for Migrate to detect models
 from routes import products_bp, users_bp, orders_bp, auth_bp
+from errors import register_error_handlers
 from utils import db
 
 
@@ -33,6 +34,9 @@ def init_app():
     app.register_blueprint(users_bp)
     app.register_blueprint(orders_bp)
     app.register_blueprint(auth_bp)
+
+    # Register global error handlers (JSON responses)
+    register_error_handlers(app)
 
     print("Flask app initialized successfully.")
     return app
