@@ -1,16 +1,45 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token
+from marshmallow import ValidationError
 from models import Product, User, Category, Order
 from utils import db
 from sqlalchemy.exc import IntegrityError
 from auth import hash_password, check_password, roles_required
-from validation import validate_product_data
+from schemas import (
+    ProductCreateSchema,
+    ProductUpdateSchema,
+    ProductListSchema,
+    ProductDetailSchema,
+    UserRegisterSchema,
+    UserDetailSchema,
+    LoginSchema,
+    OrderListSchema,
+    OrderDetailSchema,
+)
 
+
+# ─── Schema instances (reusable, stateless) ───────────────────────────────────
+
+product_create_schema  = ProductCreateSchema()
+product_update_schema  = ProductUpdateSchema()
+product_list_schema    = ProductListSchema(many=True)
+product_detail_schema  = ProductDetailSchema()
+user_register_schema   = UserRegisterSchema()
+user_detail_schema     = UserDetailSchema()
+login_schema           = LoginSchema()
+order_list_schema      = OrderListSchema(many=True)
+order_detail_schema    = OrderDetailSchema()
+
+
+# ─── Blueprints ───────────────────────────────────────────────────────────────
 
 products_bp = Blueprint('products', __name__, url_prefix='/store')
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 orders_bp = Blueprint('orders', __name__)
 auth_bp = Blueprint('auth', __name__)
+
+
+# ─── Product Routes ───────────────────────────────────────────────────────────
 
 
 @products_bp.route('/products', methods=['GET'])
@@ -81,20 +110,15 @@ def get_products():
     """
     query = Product.query
 
-    print(f"arguments: {request.args}")
-
     if 'name' in request.args:
-        print("filter by name")
         name = request.args.get('name', type=str)
         query = query.filter(Product.name.icontains(name))
-        
+
     if 'category_id' in request.args:
-        print("filter by category")
         category_id = request.args.get('category_id', type=int)
         query = query.filter_by(category_id=category_id)
 
     if 'max_price' in request.args:
-        print("filter by max price")
         max_price = request.args.get('max_price', type=float)
         query = query.filter(Product.price <= max_price)
 
@@ -105,7 +129,7 @@ def get_products():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     return jsonify({
-        "products": [product.show_list() for product in pagination.items],
+        "products": product_list_schema.dump(pagination.items),
         "page": pagination.page,
         "per_page": pagination.per_page,
         "total": pagination.total,
@@ -154,10 +178,14 @@ def create_product():
     responses:
       201:
         description: Product created successfully
+      400:
+        description: Validation error
       401:
         description: Unauthorized
       403:
         description: Forbidden — seller role required
+      404:
+        description: Category not found
       500:
         description: Error creating product
     """
@@ -165,45 +193,29 @@ def create_product():
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
 
-    # TODO 1: Guard — return 400 if body is missing or name/price absent
-    error, code = validate_product_data(data)
-    if error:
-        return jsonify({"error": error}), code
-
-    # TODO 2: Read fields
-    name        = data.get('name')
-    sku         = data.get('sku')
-    description = data.get('description')
-    price       = data.get('price')
-    stock_qty   = data.get('stock_qty', 0)
-    is_active   = data.get('is_active', True)
-    category_id = data.get('category_id')
-
-    # Validate category_id exists if provided
-    if category_id is not None:
-        category = Category.query.get(category_id)
-        if category is None:
-            return jsonify({"error": f"Category with id {category_id} not found"}), 404
-
-    # TODO 3: Create Product, add to session, commit
+    # Validate and deserialize input using DTO schema
     try:
-        product = Product(
-            name=name,
-            sku=sku,
-            description=description,
-            price=price,
-            stock_qty=stock_qty,
-            is_active=is_active,
-            category_id=category_id
-        )
+        validated = product_create_schema.load(data)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
+
+    # Validate category exists if provided
+    if validated.get('category_id') is not None:
+        category = Category.query.get(validated['category_id'])
+        if category is None:
+            return jsonify({"error": f"Category with id {validated['category_id']} not found"}), 404
+
+    # Create product from validated data
+    try:
+        product = Product(**validated)
         db.session.add(product)
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "Error creating product", "details": str(e)}), 500
 
-    # TODO 4: Return 201 Created
-    return jsonify(product.to_dict()), 201
+    # Serialize response using DTO schema
+    return jsonify(product_detail_schema.dump(product)), 201
 
 
 @products_bp.route('/products/<int:product_id>', methods=['GET'])
@@ -249,7 +261,7 @@ def get_product(product_id):
     product = Product.query.get(product_id)
     if product is None:
         return jsonify({"message": "Product not found", "status": "error"}), 404
-    return jsonify(product.show_detail()), 200
+    return jsonify(product_detail_schema.dump(product)), 200
 
 
 @products_bp.route('/products/<int:product_id>', methods=['PUT'])
@@ -288,6 +300,8 @@ def update_product(product_id):
     responses:
       200:
         description: Product updated successfully
+      400:
+        description: Validation error
       401:
         description: Unauthorized
       403:
@@ -297,56 +311,38 @@ def update_product(product_id):
       500:
         description: Error updating product
     """
-
-    # TODO 1: Parse request body — return 400 if None
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
 
-    if data.get('category_id') is not None:
-        category_id = data['category_id']
-        category = Category.query.get(category_id)
-        if category is None:
-            return jsonify({"error": f"Category with id {category_id} not found"}), 404
-            
+    # Validate input using DTO schema (partial — all fields optional)
+    try:
+        validated = product_update_schema.load(data)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
 
-    # TODO 2: Fetch product — return 404 if not found
+    # Check category exists if provided
+    if validated.get('category_id') is not None:
+        category = Category.query.get(validated['category_id'])
+        if category is None:
+            return jsonify({"error": f"Category with id {validated['category_id']} not found"}), 404
+
+    # Fetch product
     product = Product.query.get(product_id)
     if product is None:
         return jsonify({"error": f"Product {product_id} not found"}), 404
 
-    # validate input data before updateing
-    error, code = validate_product_data(data, False)
-    if error:
-        return jsonify({"error": error}), code
+    # Partial update — only update fields present in validated data
+    for key, value in validated.items():
+        setattr(product, key, value)
 
-
-    # TODO 3: Partial update — only update fields present in the body
-    if data.get('name') is not None:
-        product.name = data['name']
-    if data.get('sku') is not None:
-        product.sku = data['sku']
-    if data.get('description') is not None:
-        product.description = data['description']
-    if data.get('price') is not None:
-        product.price = data['price']
-    if data.get('stock_qty') is not None:
-        product.stock_qty = data['stock_qty']
-    if data.get('is_active') is not None:
-        product.is_active = data['is_active']
-    if data.get('category_id') is not None:
-        product.category_id = data['category_id']
-    # Validate category_id exists if provided
-    
-
-    # TODO 4: Commit and return updated product with 200
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "Error updating product", "details": str(e)}), 500
 
-    return jsonify(product.to_dict()), 200
+    return jsonify(product_detail_schema.dump(product)), 200
 
 
 @products_bp.route('/products/<int:product_id>', methods=['DELETE'])
@@ -378,11 +374,19 @@ def delete_product(product_id):
     if product is None:
         return jsonify({"message": "Product not found", "status": "error"}), 404
 
+    # Serialize before deleting (so we can return product details in response)
+    product_data = product_detail_schema.dump(product)
+
     db.session.delete(product)
     db.session.commit()
-    return jsonify({"message": "Product deleted successfully",
-                    "product": product.show_detail(),
-                    "status": "ok"}), 200
+    return jsonify({
+        "message": "Product deleted successfully",
+        "product": product_data,
+        "status": "ok"
+    }), 200
+
+
+# ─── Category Routes ──────────────────────────────────────────────────────────
 
 
 @products_bp.route('/categories/<int:category_id>', methods=['GET'])
@@ -432,10 +436,11 @@ def get_category(category_id):
     return jsonify({
         'id': category.id,
         'name': category.name,
-        'products': [
-            p.show_list() for p in category.products
-        ]
+        'products': product_list_schema.dump(category.products)
     }), 200
+
+
+# ─── User Routes ──────────────────────────────────────────────────────────────
 
 
 @users_bp.route('/register', methods=['POST'])
@@ -453,7 +458,8 @@ def register_user():
           required:
             - username
             - email
-            - password
+            - password_hash
+            - role
           properties:
             username:
               type: string
@@ -462,36 +468,46 @@ def register_user():
               type: string
               format: email
               example: "john@example.com"
-            password:
+            password_hash:
               type: string
               example: "securepassword123"
+            role:
+              type: string
+              example: "user"
     responses:
       201:
         description: User registered successfully
       400:
-        description: Missing required field
+        description: Validation error
       409:
         description: Email already exists
       500:
         description: Error registering user
     """
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
+
+    # Validate input using DTO schema
     try:
-        for field in ['username', 'email', 'password_hash', 'role']:
-            if field not in data:
-                return jsonify({"message": f"Missing required field: {field}", "status": "error"}), 400
-        
+        validated = user_register_schema.load(data)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
+
+    try:
         user = User(
-            username=data['username'],
-            email=data['email'],
-            password_hash=hash_password(data['password_hash']),
-            role=data['role']
+            username=validated['username'],
+            email=validated['email'],
+            password_hash=hash_password(validated['password_hash']),
+            role=validated['role']
         )
         db.session.add(user)
         db.session.commit()
-        return jsonify({"message": "User registered successfully",
-                        "user": user.to_dict(),
-                        "status": "ok"}), 201
+        return jsonify({
+            "message": "User registered successfully",
+            "user": user_detail_schema.dump(user),
+            "status": "ok"
+        }), 201
     except IntegrityError:
         db.session.rollback()
         return jsonify({"message": "Email already exists", "status": "error"}), 409
@@ -539,13 +555,13 @@ def get_user(user_id):
         user = User.query.get(user_id)
         if user is None:
             return jsonify({"message": "User not found", "status": "error"}), 404
-        return jsonify(user.to_dict()), 200
+        return jsonify(user_detail_schema.dump(user)), 200
     except Exception as e:
         print(f"Error fetching user: {e}")
         return jsonify({"message": "Error fetching user", "status": "error"}), 500
 
 
-
+# ─── Order Routes ─────────────────────────────────────────────────────────────
 
 
 @orders_bp.route('/orders', methods=['GET'])
@@ -579,15 +595,7 @@ def get_orders():
         description: Forbidden
     """
     orders = Order.query.all()
-    return jsonify([
-        {
-            "id": order.id,
-            "name": order.user.username,
-            "total": order.total,
-            "status": order.status,
-        }
-        for order in orders
-    ]), 200
+    return jsonify(order_list_schema.dump(orders)), 200
 
 
 @orders_bp.route('/orders/<int:order_id>', methods=['GET'])
@@ -639,14 +647,10 @@ def get_order_by_id(order_id):
         description: Order not found
     """
     order = Order.query.get_or_404(order_id)
-    return jsonify({
-        "id": order.id,
-        "user_id": order.user.username,
-        "total": order.total,
-        "products": [
-            p.show_list() for p in order.products
-        ]
-    }), 200
+    return jsonify(order_detail_schema.dump(order)), 200
+
+
+# ─── Auth Routes ──────────────────────────────────────────────────────────────
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -685,18 +689,23 @@ def login():
             user:
               type: object
       400:
-        description: Missing email or password
+        description: Validation error
       401:
         description: Invalid credentials
     """
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
 
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'message': 'Missing email or password', 'status': 'error'}), 400
+    # Validate input using DTO schema
+    try:
+        validated = login_schema.load(data)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
 
-    user = User.query.filter_by(email=data['email']).first()
+    user = User.query.filter_by(email=validated['email']).first()
 
-    if user is None or not check_password(data['password'], user.password_hash):
+    if user is None or not check_password(validated['password'], user.password_hash):
         return jsonify({'message': 'Invalid email or password', 'status': 'error'}), 401
 
     token = create_access_token(
@@ -707,5 +716,5 @@ def login():
     return jsonify({
         'message': 'Login successful',
         'token': token,
-        'user': user.to_dict()
+        'user': user_detail_schema.dump(user)
     }), 200
