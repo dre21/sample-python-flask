@@ -1,7 +1,11 @@
 """
-Seeder script for Order model.
+Seeder script for Order model only.
+Seeds orders using existing users and products in the database.
+
 Run from the project root:
     python -m helper.seed_order
+
+Note: Run `python -m helper.seed` first to ensure users and products exist.
 """
 
 import sys
@@ -11,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from app import app
 from utils import db
-from models import Order, Product, User
+from models import Order, Product, User, order_products
 
 
 def seed_orders():
@@ -30,15 +34,12 @@ def seed_orders():
             return
 
         # Clear existing orders and association data
-        # Need to clear the association table via raw SQL since it's not a model
-        db.session.execute(db.text("DELETE FROM order_products"))
+        db.session.execute(order_products.delete())
         Order.query.delete()
         db.session.commit()
         print("  ✓ Cleared existing orders")
 
         # Create orders with different product combinations and statuses
-        statuses = ['paid', 'pending', 'shipped', 'delivered', 'cancelled']
-
         orders_data = [
             {
                 'user': users[0],
@@ -94,15 +95,15 @@ def seed_orders():
 
         created = 0
         for data in orders_data:
-            order_products = data['products']
-            total = sum(p.price for p in order_products)
+            order_products_list = data['products']
+            total = sum(p.price for p in order_products_list)
 
             order = Order(
                 total=round(total, 2),
                 user_id=data['user'].id,
                 status=data['status'],
             )
-            order.products = order_products
+            order.products = order_products_list
             db.session.add(order)
             created += 1
 

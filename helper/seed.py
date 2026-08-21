@@ -12,9 +12,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from app import app
 from utils import db
-from models import Category, Product, User
-from werkzeug.security import generate_password_hash
-from datetime import datetime
+from models import Category, Product, User, Order, order_products
+from auth import hash_password
 
 
 def seed_categories():
@@ -191,6 +190,7 @@ def seed_products(categories):
     db.session.add_all(products)
     db.session.commit()
     print(f"  ✓ Seeded {len(products)} products")
+    return products
 
 
 def seed_users():
@@ -198,43 +198,120 @@ def seed_users():
         User(
             username='admin',
             email='admin@simpleshops.com',
-            password_hash=generate_password_hash('admin123'),
+            password_hash=hash_password('Password1234'),
             role='admin',
         ),
         User(
             username='john_doe',
             email='john@example.com',
-            password_hash=generate_password_hash('password123'),
+            password_hash=hash_password('Password1234'),
             role='user',
         ),
         User(
             username='jane_smith',
             email='jane@example.com',
-            password_hash=generate_password_hash('password123'),
-            role='user',
+            password_hash=hash_password('Password1234'),
+            role='seller',
         ),
         User(
             username='bob_manager',
             email='bob@simpleshops.com',
-            password_hash=generate_password_hash('manager456'),
+            password_hash=hash_password('Password1234'),
             role='admin',
         ),
         User(
             username='alice_buyer',
             email='alice@example.com',
-            password_hash=generate_password_hash('buyer789'),
+            password_hash=hash_password('Password1234'),
             role='user',
         ),
     ]
     db.session.add_all(users)
     db.session.commit()
     print(f"  ✓ Seeded {len(users)} users")
+    return users
+
+
+def seed_orders(users, products):
+    """Seed orders with product associations and statuses."""
+    orders_data = [
+        {
+            'user': users[0],
+            'products': products[0:3],
+            'status': 'paid',
+        },
+        {
+            'user': users[1],
+            'products': products[2:5],
+            'status': 'pending',
+        },
+        {
+            'user': users[1],
+            'products': products[5:7],
+            'status': 'shipped',
+        },
+        {
+            'user': users[2],
+            'products': [products[0], products[4], products[7]],
+            'status': 'delivered',
+        },
+        {
+            'user': users[0],
+            'products': products[8:12],
+            'status': 'paid',
+        },
+        {
+            'user': users[3],
+            'products': [products[1], products[6], products[10]],
+            'status': 'cancelled',
+        },
+        {
+            'user': users[4],
+            'products': products[12:16],
+            'status': 'pending',
+        },
+        {
+            'user': users[2],
+            'products': products[1:4],
+            'status': 'paid',
+        },
+        {
+            'user': users[0],
+            'products': [products[5], products[9]],
+            'status': 'shipped',
+        },
+        {
+            'user': users[3],
+            'products': products[3:6],
+            'status': 'delivered',
+        },
+    ]
+
+    created = 0
+    for data in orders_data:
+        order_products_list = data['products']
+        total = sum(p.price for p in order_products_list)
+
+        order = Order(
+            total=round(total, 2),
+            user_id=data['user'].id,
+            status=data['status'],
+        )
+        order.products = order_products_list
+        db.session.add(order)
+        created += 1
+
+    db.session.commit()
+    print(f"  ✓ Seeded {created} orders with products")
 
 
 def run_seed():
     print("🌱 Starting database seeding...")
     with app.app_context():
         # Clear existing data (order matters due to foreign keys)
+        # Clear association table first, then orders, then products/users
+        db.session.execute(order_products.delete())
+        Order.query.delete()
         Product.query.delete()
         Category.query.delete()
         User.query.delete()
@@ -242,8 +319,9 @@ def run_seed():
         print("  ✓ Cleared existing data")
 
         categories = seed_categories()
-        seed_products(categories)
-        seed_users()
+        products = seed_products(categories)
+        users = seed_users()
+        seed_orders(users, products)
 
     print("🌱 Seeding complete!")
 
