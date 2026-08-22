@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, create_access_token
+from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, get_jwt_identity
 from marshmallow import ValidationError
 from models import Product, User, Category, Order
 from utils import db
@@ -36,7 +36,7 @@ order_detail_schema    = OrderDetailSchema()
 products_bp = Blueprint('products', __name__, url_prefix='/store')
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 orders_bp = Blueprint('orders', __name__)
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 # ─── Product Routes ───────────────────────────────────────────────────────────
@@ -678,13 +678,15 @@ def login():
               example: "securepassword123"
     responses:
       200:
-        description: Login successful, returns JWT token
+        description: Login successful, returns access and refresh tokens
         schema:
           type: object
           properties:
             message:
               type: string
-            token:
+            access_token:
+              type: string
+            refresh_token:
               type: string
             user:
               type: object
@@ -708,13 +710,58 @@ def login():
     if user is None or not check_password(validated['password'], user.password_hash):
         return jsonify({'message': 'Invalid email or password', 'status': 'error'}), 401
 
-    token = create_access_token(
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": user.role}
+    )
+    refresh_token = create_refresh_token(
         identity=str(user.id),
         additional_claims={"role": user.role}
     )
 
     return jsonify({
         'message': 'Login successful',
-        'token': token,
+        'access_token': access_token,
+        'refresh_token': refresh_token,
         'user': user_detail_schema.dump(user)
     }), 200
+
+
+@auth_bp.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    """Get a new access token using a refresh token
+    ---
+    tags:
+      - Auth
+    security:
+      - Bearer: []
+    description: >
+      Send the refresh token in the Authorization header as "Bearer <refresh_token>".
+      Returns a new access token. The refresh token itself is not rotated.
+    responses:
+      200:
+        description: New access token issued
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+      401:
+        description: Invalid or expired refresh token
+    """
+    # get_jwt_identity() returns the identity (user id) from the refresh token
+    current_user_id = get_jwt_identity()
+
+    # Look up user to include role in new access token claims
+    user = User.query.get(current_user_id)
+    if user is None:
+        return jsonify({"message": "User not found", "status": "error"}), 401
+
+    new_access_token = create_access_token(
+        identity=current_user_id,
+        additional_claims={"role": user.role},
+        fresh=False  # Refreshed tokens are not "fresh" (not from direct login)
+    )
+
+    return jsonify({"access_token": new_access_token}), 200
