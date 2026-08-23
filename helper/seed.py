@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from app import app
 from utils import db
 from models import Category, Product, User, Order, order_products
-from auth import hash_password
+from middleware.auth import hash_password
 
 
 def seed_categories():
@@ -309,7 +309,6 @@ def run_seed():
     print("🌱 Starting database seeding...")
     with app.app_context():
         # Clear existing data (order matters due to foreign keys)
-        # Clear association table first, then orders, then products/users
         db.session.execute(order_products.delete())
         Order.query.delete()
         Product.query.delete()

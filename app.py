@@ -3,9 +3,9 @@ from flasgger import Swagger
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from config import Config
-from models import Product, User, Category  # noqa: F401 — needed for Migrate to detect models
-from routes import products_bp, users_bp, orders_bp, auth_bp
-from errors import register_error_handlers
+from models import Product, User, Category, Order  # noqa: F401 — needed for Migrate to detect models
+from controllers import products_bp, users_bp, orders_bp, auth_bp
+from middleware.errors import register_error_handlers
 from utils import db
 
 
@@ -20,13 +20,13 @@ def init_app():
     db.init_app(app)
 
     # Set up Flask-Migrate
-    migrate = Migrate(app, db)
+    migrate = Migrate(app, db)  # noqa: F841
 
     # Set up JWT
-    jwt = JWTManager(app)
+    jwt = JWTManager(app)  # noqa: F841
 
     # Set up Swagger
-    swagger = Swagger(app)
+    swagger = Swagger(app)  # noqa: F841
 
     # Register blueprints
     print("Registering blueprints...")
@@ -43,7 +43,3 @@ def init_app():
 
 
 app = init_app()
-
-
-# if __name__ == '__main__':
-#     app.run(debug=True)
