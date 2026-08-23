@@ -1,212 +1,149 @@
-# Arsitektur Aplikasi
+# Arsitektur Aplikasi Simple Shops
 
-> ⚠️ **Status: Belum diimplementasi** — Project saat ini masih menggunakan struktur flat. Dokumen ini menjelaskan konsep arsitektur dan rencana refactoring ke MVC.
+## Diagram
 
-## Apa Itu Arsitektur Software?
+```mermaid
+graph TD
+    %% Client Layer
+    Client["🌐 Client (Browser / Postman)"]
 
-Arsitektur adalah cara kamu **mengorganisir kode** dalam sebuah project. Ini menentukan:
-- File apa saja yang ada
-- Tanggung jawab masing-masing file
-- Bagaimana file-file tersebut berinteraksi
+    %% Flask App Layer
+    subgraph App["Flask Application (app.py)"]
+        direction TB
+        Swagger["Flasgger (Swagger UI)<br>/apidocs"]
+        JWT["Flask-JWT-Extended"]
+        Migrate["Flask-Migrate (Alembic)"]
+    end
 
-Analoginya: arsitektur itu seperti denah rumah. Kamar tidur, dapur, dan kamar mandi punya fungsi masing-masing dan diletakkan di tempat yang masuk akal.
+    %% Middleware Layer
+    subgraph Middleware["middleware/"]
+        direction TB
+        Auth["auth.py<br>hash_password()<br>check_password()<br>roles_required()"]
+        Errors["errors.py<br>register_error_handlers()"]
+    end
 
-## Kenapa Arsitektur Penting?
+    %% Controller Layer
+    subgraph Controllers["controllers/"]
+        direction TB
+        ProductCtrl["product_controller.py<br>products_bp (/store)"]
+        UserCtrl["user_controller.py<br>users_bp (/users)"]
+        OrderCtrl["order_controller.py<br>orders_bp (/orders)"]
+        AuthCtrl["auth_controller.py<br>auth_bp (/auth)"]
+    end
 
-Saat project masih kecil (100-500 baris), taruh semua di satu file juga oke. Tapi saat project membesar:
+    %% Schema Layer
+    subgraph Schemas["schemas/"]
+        direction TB
+        ProductSchema["product_schema.py<br>Create / Update / List / Detail"]
+        UserSchema["user_schema.py<br>Register / Detail"]
+        OrderSchema["order_schema.py<br>List / Detail / Product"]
+        AuthSchema["auth_schema.py<br>Login"]
+    end
 
-| Masalah | Tanpa arsitektur | Dengan arsitektur |
-|---------|------------------|-------------------|
-| Cari kode | Scroll 2000 baris | Buka file yang tepat |
-| Ubah logic | Takut rusak yang lain | Perubahan terisolasi |
-| Kerja tim | Sering conflict | Masing-masing area kerja |
-| Testing | Susah di-test terpisah | Tiap layer bisa di-test sendiri |
+    %% Service Layer
+    subgraph Services["services/"]
+        direction TB
+        ProductSvc["product_service.py"]
+        UserSvc["user_service.py"]
+        OrderSvc["order_service.py"]
+        AuthSvc["auth_service.py"]
+    end
 
-## Struktur Saat Ini (Flat)
+    %% Model Layer
+    subgraph Models["models/"]
+        direction TB
+        ProductModel["product.py<br>Product + order_products"]
+        CategoryModel["category.py<br>Category"]
+        UserModel["user.py<br>User"]
+        OrderModel["order.py<br>Order"]
+    end
 
-```
-simple-shops/
-├── app.py          # Setup Flask, register blueprint
-├── config.py       # Konfigurasi
-├── models.py       # SEMUA model (Product, User, Order, Category)
-├── routes.py       # SEMUA route handler
-├── schemas.py      # SEMUA DTO/validation
-├── auth.py         # Helper auth
-├── errors.py       # Error handlers
-└── utils.py        # Shared utilities
-```
+    %% Database
+    DB[("PostgreSQL<br>Database")]
 
-**Kelebihan:**
-- Simpel, mudah dipahami untuk pemula
-- Cepat untuk prototype
-- Tidak perlu mikir banyak soal struktur
+    %% Utils
+    Utils["utils.py<br>db = SQLAlchemy()"]
 
-**Kekurangan:**
-- `routes.py` semakin panjang seiring fitur bertambah
-- Business logic bercampur dengan HTTP handling
-- Sulit di-test secara terpisah
+    %% Config
+    Config["config.py<br>DATABASE_URL, JWT_SECRET_KEY"]
 
-## Arsitektur MVC (Target Refactoring)
+    %% Connections
+    Client -->|"HTTP Request"| App
+    App --> Middleware
+    App --> Controllers
 
-MVC = **Model - View - Controller**
+    Middleware -.->|"Dekorator & Error Handler"| Controllers
 
-Dalam konteks REST API (tanpa frontend), biasanya jadi:
-- **Model** → Data layer (database)
-- **Controller** → Request handler (menerima request, kirim response)
-- **Service** → Business logic (aturan bisnis)
+    Controllers -->|"Validasi Input"| Schemas
+    Controllers -->|"Panggil Logika Bisnis"| Services
 
-```
-Request masuk
-     ↓
-[Controller] — Terima request, validasi input, panggil service
-     ↓
-[Service] — Jalankan business logic, panggil model
-     ↓
-[Model] — Baca/tulis database
-     ↓
-[Service] — Proses hasil dari model
-     ↓
-[Controller] — Format response, kirim ke client
-```
+    Services -->|"Query & Mutasi"| Models
+    Models -->|"ORM Mapping"| Utils
+    Utils -->|"SQL Query"| DB
 
-### Tanggung Jawab Setiap Layer
-
-| Layer | Tanggung Jawab | Contoh |
-|-------|---------------|--------|
-| **Controller** | Handle HTTP, validasi input, format response | Parse JSON, return 404 |
-| **Service** | Business logic, aturan bisnis | "Seller tidak bisa buat order" |
-| **Model** | Akses database, definisi tabel | Query, insert, update |
-| **DTO** | Validasi & transformasi data | Marshmallow schemas |
-
-### Aturan Utama
-
-1. **Controller TIDAK boleh akses database langsung** — Harus lewat service
-2. **Service TIDAK boleh tahu tentang HTTP** — Tidak import request/jsonify
-3. **Model TIDAK boleh berisi business logic** — Hanya definisi data
-
-## Rencana Struktur Baru
-
-```
-simple-shops/
-├── app.py                  # Application factory
-├── config.py               # Konfigurasi
-│
-├── controllers/            # HTTP handlers (tipis — hanya terima & kirim)
-│   ├── __init__.py
-│   ├── product_controller.py
-│   ├── user_controller.py
-│   ├── order_controller.py
-│   └── auth_controller.py
-│
-├── services/               # Business logic
-│   ├── __init__.py
-│   ├── product_service.py
-│   ├── user_service.py
-│   └── order_service.py
-│
-├── models/                 # Database models
-│   ├── __init__.py
-│   ├── product.py
-│   ├── user.py
-│   ├── order.py
-│   └── category.py
-│
-├── dto/                    # Request/response schemas
-│   ├── __init__.py
-│   ├── product_dto.py
-│   ├── user_dto.py
-│   └── order_dto.py
-│
-├── middleware/             # Auth, logging, error handling
-│   ├── __init__.py
-│   ├── auth.py
-│   ├── error_handler.py
-│   └── logger.py
-│
-├── migrations/
-└── helper/
+    Config -.->|"Konfigurasi"| App
+    Migrate -.->|"Migrasi Skema"| DB
 ```
 
-## Contoh Perbandingan: Sebelum vs Sesudah
+## Penjelasan Diagram
 
-### Sebelum (Flat — Semua di routes.py)
+### Alur Request (dari atas ke bawah)
 
-```python
-# routes.py — controller + service + database akses, semua campur
-@products_bp.route('/products', methods=['POST'])
-@roles_required('seller')
-def create_product():
-    data = request.get_json()
-    
-    # Validasi (DTO layer)
-    validated = product_create_schema.load(data)
-    
-    # Business logic + database (harusnya di service)
-    if validated.get('category_id'):
-        category = Category.query.get(validated['category_id'])
-        if category is None:
-            return jsonify({"error": "Category not found"}), 404
-    
-    product = Product(**validated)
-    db.session.add(product)
-    db.session.commit()
-    
-    return jsonify(product_detail_schema.dump(product)), 201
-```
+1. **Client** — Pengguna mengirim HTTP request (GET, POST, PUT, DELETE) ke server Flask. Bisa melalui browser, Postman, atau aplikasi frontend.
 
-### Sesudah (MVC — Terpisah)
+2. **Flask Application (`app.py`)** — Entry point aplikasi. Di sini Flask di-inisialisasi bersama extension-nya:
+   - **Flasgger** — menghasilkan dokumentasi Swagger UI otomatis di `/apidocs`
+   - **Flask-JWT-Extended** — menangani pembuatan dan validasi token JWT
+   - **Flask-Migrate** — mengelola migrasi database menggunakan Alembic
 
-```python
-# controllers/product_controller.py — hanya handle HTTP
-@products_bp.route('/products', methods=['POST'])
-@roles_required('seller')
-def create_product():
-    data = request.get_json()
-    
-    try:
-        validated = product_create_schema.load(data)
-    except ValidationError as err:
-        return jsonify({"errors": err.messages}), 400
-    
-    product = product_service.create_product(validated)  # Delegate ke service
-    return jsonify(product_detail_schema.dump(product)), 201
-```
+3. **Middleware (`middleware/`)** — Lapisan yang menangani concern lintas fitur:
+   - **`auth.py`** — berisi fungsi hashing password (`bcrypt`) dan dekorator `roles_required()` yang memproteksi endpoint berdasarkan role user (admin, seller, user)
+   - **`errors.py`** — mengubah semua error HTTP (400, 404, 500) menjadi response JSON yang konsisten
 
-```python
-# services/product_service.py — business logic
-from models.product import Product
-from models.category import Category
-from utils import db
+4. **Controllers (`controllers/`)** — Lapisan tipis yang menerima request. Tugasnya:
+   - Mengambil data dari request body/query parameter
+   - Memvalidasi input menggunakan schema
+   - Memanggil service yang sesuai
+   - Mengembalikan response JSON ke client
+   - Setiap controller memiliki satu Blueprint dengan URL prefix-nya masing-masing
 
-class ProductService:
-    def create_product(self, data):
-        # Validasi business rule
-        if data.get('category_id'):
-            category = Category.query.get(data['category_id'])
-            if category is None:
-                raise ValueError(f"Category {data['category_id']} not found")
-        
-        # Buat dan simpan product
-        product = Product(**data)
-        db.session.add(product)
-        db.session.commit()
-        return product
+5. **Schemas (`schemas/`)** — Lapisan DTO (Data Transfer Object) menggunakan Marshmallow:
+   - **Load** — memvalidasi data input (tipe data, required fields, panjang string, range angka)
+   - **Dump** — mengubah objek model menjadi JSON response yang bersih (tanpa field sensitif seperti password)
 
-product_service = ProductService()
-```
+6. **Services (`services/`)** — Lapisan logika bisnis. Di sinilah "kerja nyata" terjadi:
+   - Query database (filter, pagination)
+   - Validasi bisnis (cek apakah kategori ada, cek duplikasi email)
+   - Operasi CRUD (create, read, update, delete)
+   - Error handling dan rollback transaksi
 
-## Kapan Harus Refactor?
+7. **Models (`models/`)** — Definisi struktur tabel database menggunakan SQLAlchemy ORM:
+   - Setiap model merepresentasikan satu tabel di PostgreSQL
+   - Mendefinisikan kolom, foreign key, dan relationship antar tabel
+   - Memiliki method `to_dict()` untuk serialisasi sederhana
 
-**Tetap flat kalau:**
-- Project masih kecil (< 10 endpoint)
-- Kamu sedang belajar dasar-dasarnya
-- Belum ada business logic yang kompleks
+8. **Utils (`utils.py`)** — Berisi instance `db = SQLAlchemy()` yang digunakan oleh semua model. Diletakkan terpisah untuk menghindari circular import.
 
-**Refactor ke MVC kalau:**
-- `routes.py` sudah > 500 baris
-- Business logic mulai rumit (banyak if-else, validasi custom)
-- Tim mulai kerja bareng di codebase yang sama
-- Mau mulai tulis unit test
+9. **PostgreSQL Database** — Tempat penyimpanan data permanen. Diakses melalui ORM (tidak ada raw SQL).
+
+### Hubungan Antar Lapisan
+
+| Dari | Ke | Jenis Hubungan |
+|------|-----|---------------|
+| Controller → Schema | Validasi input & serialisasi output |
+| Controller → Service | Delegasi logika bisnis |
+| Service → Model | Query dan mutasi data |
+| Model → Utils (db) | Mapping ORM ke tabel database |
+| Middleware → Controller | Dekorator proteksi (auth, error handling) |
+| Config → App | Menyediakan environment variables |
+
+### Prinsip Desain
+
+- **Separation of Concerns** — setiap lapisan punya tanggung jawab tunggal
+- **Thin Controllers** — controller tidak boleh berisi logika bisnis, hanya "terima request → panggil service → kirim response"
+- **Fat Services** — semua logika bisnis terpusat di service layer
+- **Single Direction** — data mengalir satu arah: Controller → Service → Model → Database
+
 
 ## Referensi
 
