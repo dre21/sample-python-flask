@@ -1,12 +1,8 @@
-"""
-Global error handlers — returns JSON instead of HTML for all HTTP errors.
-"""
-
 from flask import jsonify
 
 
 def register_error_handlers(app):
-    """Register global error handlers that return JSON instead of HTML."""
+    """Register global error handlers that return JSON instead of HTML, overwrites default Flask."""
 
     @app.errorhandler(400)
     def bad_request(error):
