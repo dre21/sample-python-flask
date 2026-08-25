@@ -3,6 +3,7 @@ Shared test fixtures — creates an in-memory SQLite app for fast, isolated test
 """
 
 import pytest
+from flask_jwt_extended import create_access_token
 from app import init_app
 from utils import db as _db
 from models import Product, Category
@@ -88,3 +89,25 @@ def seed_products(app):
         ]
         _db.session.add_all(products)
         _db.session.commit()
+
+
+@pytest.fixture(scope='class')
+def seller_token(app):
+    """Generate a JWT access token with the 'seller' role for testing."""
+    with app.app_context():
+        token = create_access_token(
+            identity="1",
+            additional_claims={"role": "seller"}
+        )
+        return token
+
+
+@pytest.fixture(scope='class')
+def user_token(app):
+    """Generate a JWT access token with the default 'user' role for testing."""
+    with app.app_context():
+        token = create_access_token(
+            identity="2",
+            additional_claims={"role": "user"}
+        )
+        return token
