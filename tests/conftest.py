@@ -6,7 +6,7 @@ import pytest
 from flask_jwt_extended import create_access_token
 from app import init_app
 from utils import db as _db
-from models import Product, Category
+from models import Product, Category, User, Order
 
 
 @pytest.fixture(scope='class')
@@ -92,6 +92,59 @@ def seed_products(app):
 
 
 @pytest.fixture(scope='class')
+def seed_users(app):
+    """Seed the database with sample users for testing."""
+    with app.app_context():
+        from middleware.auth import hash_password
+
+        users = [
+            User(
+                id=1,
+                username="seller_jane",
+                email="jane@example.com",
+                password_hash=hash_password("password123"),
+                role="seller",
+            ),
+            User(
+                id=2,
+                username="buyer_john",
+                email="john@example.com",
+                password_hash=hash_password("password123"),
+                role="user",
+            ),
+            User(
+                id=3,
+                username="admin_bob",
+                email="bob@example.com",
+                password_hash=hash_password("adminpass1"),
+                role="admin",
+            ),
+        ]
+        _db.session.add_all(users)
+        _db.session.commit()
+
+
+@pytest.fixture(scope='class')
+def seed_orders(app, seed_users, seed_products):
+    """Seed the database with sample orders for testing. Requires users and products."""
+    with app.app_context():
+        order1 = Order(id=1, total=119.98, status="pending", user_id=2)
+        order2 = Order(id=2, total=15.00, status="completed", user_id=2)
+        _db.session.add_all([order1, order2])
+        _db.session.commit()
+
+        # Attach products to orders via the association table
+        product1 = Product.query.get(1)  # Wireless Mouse
+        product2 = Product.query.get(2)  # Mechanical Keyboard
+        product3 = Product.query.get(3)  # Cotton T-Shirt
+
+        order1.products.append(product1)
+        order1.products.append(product2)
+        order2.products.append(product3)
+        _db.session.commit()
+
+
+@pytest.fixture(scope='class')
 def seller_token(app):
     """Generate a JWT access token with the 'seller' role for testing."""
     with app.app_context():
@@ -109,5 +162,16 @@ def user_token(app):
         token = create_access_token(
             identity="2",
             additional_claims={"role": "user"}
+        )
+        return token
+
+
+@pytest.fixture(scope='class')
+def admin_token(app):
+    """Generate a JWT access token with the 'admin' role for testing."""
+    with app.app_context():
+        token = create_access_token(
+            identity="3",
+            additional_claims={"role": "admin"}
         )
         return token
