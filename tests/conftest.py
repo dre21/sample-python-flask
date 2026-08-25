@@ -5,14 +5,14 @@ Shared test fixtures — creates an in-memory SQLite app for fast, isolated test
 import pytest
 from flask_jwt_extended import create_access_token
 from app import init_app
-from utils import db as _db
-from models import Product, Category, User, Order
+from app.utils import db as _db
+from app.models import Product, Category, User, Order
 
 
 @pytest.fixture(scope='class')
 def app():
     """Create a Flask application configured for testing (in-memory SQLite)."""
-    
+
     config = {
         "TESTING": True,
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
@@ -95,7 +95,7 @@ def seed_products(app):
 def seed_users(app):
     """Seed the database with sample users for testing."""
     with app.app_context():
-        from middleware.auth import hash_password
+        from app.middleware.auth import hash_password
 
         users = [
             User(
