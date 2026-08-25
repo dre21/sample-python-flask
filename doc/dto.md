@@ -221,9 +221,8 @@ class LoginSchema(Schema):
 
 ## File Terkait di Project Ini
 
-- `schemas.py` — Semua definisi schema (DTO)
-- `routes.py` — Tempat schema dipakai untuk validasi dan serialisasi
-- `validation.py` — Validasi manual lama (sebelum pakai Marshmallow, masih ada sebagai referensi)
+- `app/schemas/` — Semua definisi schema (DTO)
+- `app/controllers/` — Tempat schema dipakai untuk validasi dan serialisasi
 
 ## Referensi
 

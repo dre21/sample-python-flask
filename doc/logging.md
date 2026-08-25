@@ -83,7 +83,7 @@ def log_response(response):
 ```
 
 ```python
-# Di route handler
+# Di controller/service
 @products_bp.route('/products', methods=['POST'])
 def create_product():
     try:

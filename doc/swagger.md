@@ -22,7 +22,7 @@ Di project ini kita pakai **Flasgger**, yaitu library Flask yang menggenerate Sw
 ### Setup
 
 ```python
-# app.py
+# app/__init__.py
 from flasgger import Swagger
 
 def init_app():
@@ -32,7 +32,7 @@ def init_app():
 ```
 
 ```python
-# config.py
+# app/config.py
 class Config:
     SWAGGER = {
         'title': 'Simple Shops API',
@@ -219,9 +219,9 @@ Setelah `flask run`, buka `http://localhost:5000/apidocs`:
 
 ## File Terkait di Project Ini
 
-- `routes.py` — Docstring swagger ada di setiap route handler
-- `config.py` — Konfigurasi Swagger (title, version, description)
-- `app.py` — Inisialisasi Flasgger
+- `app/controllers/` — Docstring swagger ada di setiap route handler (controller)
+- `app/config.py` — Konfigurasi Swagger (title, version, description, security)
+- `app/__init__.py` — Inisialisasi Flasgger
 
 ## Referensi
 

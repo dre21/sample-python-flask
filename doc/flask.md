@@ -22,7 +22,7 @@ Ada banyak framework Python untuk backend: Django, FastAPI, Flask, dll. Kita pil
 Di project ini, kita membuat Flask app menggunakan pola **application factory** — sebuah fungsi yang membuat dan mengkonfigurasi app:
 
 ```python
-# app.py
+# app/__init__.py
 from flask import Flask
 
 def init_app():
@@ -38,8 +38,6 @@ def init_app():
     app.register_blueprint(products_bp)
     
     return app
-
-app = init_app()
 ```
 
 Kenapa pakai factory?
@@ -52,7 +50,7 @@ Kenapa pakai factory?
 Konfigurasi disimpan dalam sebuah class yang membaca environment variables:
 
 ```python
-# config.py
+# app/config.py
 import os
 from dotenv import load_dotenv
 
@@ -73,7 +71,7 @@ Kenapa pakai environment variable?
 Blueprint adalah cara Flask mengelompokkan route yang berhubungan. Bayangkan seperti "modul" yang bisa didaftarkan ke app:
 
 ```python
-# routes.py
+# app/controllers/product_controller.py
 from flask import Blueprint
 
 products_bp = Blueprint('products', __name__, url_prefix='/store')
@@ -84,7 +82,7 @@ def get_products():
 ```
 
 ```python
-# app.py — mendaftarkan blueprint
+# app/__init__.py — mendaftarkan blueprint
 app.register_blueprint(products_bp)
 ```
 
@@ -138,9 +136,10 @@ Flask mengirim HTTP response ke client
 
 ## File Terkait di Project Ini
 
-- `app.py` — Application factory, inisialisasi semua extension
-- `config.py` — Kelas konfigurasi
-- `routes.py` — Semua route handler menggunakan Blueprint
+- `app/__init__.py` — Application factory, inisialisasi semua extension
+- `app/config.py` — Kelas konfigurasi
+- `app/controllers/` — Semua route handler menggunakan Blueprint
+- `run.py` — Entry point (dijalankan oleh `flask run` atau gunicorn)
 
 ## Referensi
 

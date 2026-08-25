@@ -8,7 +8,7 @@ graph TD
     Client["🌐 Client (Browser / Postman)"]
 
     %% Flask App Layer
-    subgraph App["Flask Application (app.py)"]
+    subgraph App["Flask Application (app/__init__.py)"]
         direction TB
         Swagger["Flasgger (Swagger UI)<br>/apidocs"]
         JWT["Flask-JWT-Extended"]
@@ -16,14 +16,14 @@ graph TD
     end
 
     %% Middleware Layer
-    subgraph Middleware["middleware/"]
+    subgraph Middleware["app/middleware/"]
         direction TB
         Auth["auth.py<br>hash_password()<br>check_password()<br>roles_required()"]
         Errors["errors.py<br>register_error_handlers()"]
     end
 
     %% Controller Layer
-    subgraph Controllers["controllers/"]
+    subgraph Controllers["app/controllers/"]
         direction TB
         ProductCtrl["product_controller.py<br>products_bp (/store)"]
         UserCtrl["user_controller.py<br>users_bp (/users)"]
@@ -32,7 +32,7 @@ graph TD
     end
 
     %% Schema Layer
-    subgraph Schemas["schemas/"]
+    subgraph Schemas["app/schemas/"]
         direction TB
         ProductSchema["product_schema.py<br>Create / Update / List / Detail"]
         UserSchema["user_schema.py<br>Register / Detail"]
@@ -41,7 +41,7 @@ graph TD
     end
 
     %% Service Layer
-    subgraph Services["services/"]
+    subgraph Services["app/services/"]
         direction TB
         ProductSvc["product_service.py"]
         UserSvc["user_service.py"]
@@ -50,7 +50,7 @@ graph TD
     end
 
     %% Model Layer
-    subgraph Models["models/"]
+    subgraph Models["app/models/"]
         direction TB
         ProductModel["product.py<br>Product + order_products"]
         CategoryModel["category.py<br>Category"]
@@ -62,10 +62,10 @@ graph TD
     DB[("PostgreSQL<br>Database")]
 
     %% Utils
-    Utils["utils.py<br>db = SQLAlchemy()"]
+    Utils["app/utils.py<br>db = SQLAlchemy()"]
 
     %% Config
-    Config["config.py<br>DATABASE_URL, JWT_SECRET_KEY"]
+    Config["app/config.py<br>DATABASE_URL, JWT_SECRET_KEY"]
 
     %% Connections
     Client -->|"HTTP Request"| App
@@ -91,38 +91,39 @@ graph TD
 
 1. **Client** — Pengguna mengirim HTTP request (GET, POST, PUT, DELETE) ke server Flask. Bisa melalui browser, Postman, atau aplikasi frontend.
 
-2. **Flask Application (`app.py`)** — Entry point aplikasi. Di sini Flask di-inisialisasi bersama extension-nya:
+2. **Flask Application (`app/__init__.py`)** — Entry point aplikasi. Di sini Flask di-inisialisasi bersama extension-nya:
    - **Flasgger** — menghasilkan dokumentasi Swagger UI otomatis di `/apidocs`
    - **Flask-JWT-Extended** — menangani pembuatan dan validasi token JWT
    - **Flask-Migrate** — mengelola migrasi database menggunakan Alembic
 
-3. **Middleware (`middleware/`)** — Lapisan yang menangani concern lintas fitur:
+3. **Middleware (`app/middleware/`)** — Lapisan yang menangani concern lintas fitur:
    - **`auth.py`** — berisi fungsi hashing password (`bcrypt`) dan dekorator `roles_required()` yang memproteksi endpoint berdasarkan role user (admin, seller, user)
    - **`errors.py`** — mengubah semua error HTTP (400, 404, 500) menjadi response JSON yang konsisten
 
-4. **Controllers (`controllers/`)** — Lapisan tipis yang menerima request. Tugasnya:
+4. **Controllers (`app/controllers/`)** — Lapisan tipis yang menerima request. Tugasnya:
    - Mengambil data dari request body/query parameter
    - Memvalidasi input menggunakan schema
    - Memanggil service yang sesuai
    - Mengembalikan response JSON ke client
    - Setiap controller memiliki satu Blueprint dengan URL prefix-nya masing-masing
+   - Semua blueprint didaftarkan di `app/__init__.py`
 
-5. **Schemas (`schemas/`)** — Lapisan DTO (Data Transfer Object) menggunakan Marshmallow:
+5. **Schemas (`app/schemas/`)** — Lapisan DTO (Data Transfer Object) menggunakan Marshmallow:
    - **Load** — memvalidasi data input (tipe data, required fields, panjang string, range angka)
    - **Dump** — mengubah objek model menjadi JSON response yang bersih (tanpa field sensitif seperti password)
 
-6. **Services (`services/`)** — Lapisan logika bisnis. Di sinilah "kerja nyata" terjadi:
+6. **Services (`app/services/`)** — Lapisan logika bisnis. Di sinilah "kerja nyata" terjadi:
    - Query database (filter, pagination)
    - Validasi bisnis (cek apakah kategori ada, cek duplikasi email)
    - Operasi CRUD (create, read, update, delete)
    - Error handling dan rollback transaksi
 
-7. **Models (`models/`)** — Definisi struktur tabel database menggunakan SQLAlchemy ORM:
+7. **Models (`app/models/`)** — Definisi struktur tabel database menggunakan SQLAlchemy ORM:
    - Setiap model merepresentasikan satu tabel di PostgreSQL
    - Mendefinisikan kolom, foreign key, dan relationship antar tabel
    - Memiliki method `to_dict()` untuk serialisasi sederhana
 
-8. **Utils (`utils.py`)** — Berisi instance `db = SQLAlchemy()` yang digunakan oleh semua model. Diletakkan terpisah untuk menghindari circular import.
+8. **Utils (`app/utils.py`)** — Berisi instance `db = SQLAlchemy()` yang digunakan oleh semua model. Diletakkan terpisah untuk menghindari circular import.
 
 9. **PostgreSQL Database** — Tempat penyimpanan data permanen. Diakses melalui ORM (tidak ada raw SQL).
 

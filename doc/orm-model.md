@@ -41,7 +41,7 @@ Legacy syntax **tidak deprecated** dan tetap bisa dipakai di production. Tapi ka
 ### Contoh Model — Legacy Syntax (Dipakai di Project Ini)
 
 ```python
-from utils import db
+from app.utils import db
 from datetime import datetime
 
 class Product(db.Model):
@@ -65,7 +65,7 @@ Sejak SQLAlchemy 2.0 dan Flask-SQLAlchemy 3.1, ada syntax baru yang lebih "Pytho
 from sqlalchemy import String, Text, Float, Integer, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
-from utils import db
+from app.utils import db
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -358,18 +358,18 @@ class User(db.Model):
 
 ## Instance `db` dan Circular Import
 
-Instance SQLAlchemy (`db`) didefinisikan di file terpisah (`utils.py`) untuk menghindari circular import:
+Instance SQLAlchemy (`db`) didefinisikan di file terpisah (`app/utils.py`) untuk menghindari circular import:
 
 ```python
-# utils.py
+# app/utils.py
 from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 ```
 
-Semua file lain import `db` dari `utils.py`:
+Semua file lain import `db` dari `app.utils`:
 ```python
-# models.py
-from utils import db
+# app/models/product.py
+from app.utils import db
 
 class Product(db.Model):
     ...
@@ -377,9 +377,9 @@ class Product(db.Model):
 
 ## File Terkait di Project Ini
 
-- `models.py` — Semua definisi model (Product, Category, User, Order)
-- `utils.py` — Instance `db` (SQLAlchemy)
-- `routes.py` — Tempat query database dipanggil
+- `app/models/` — Semua definisi model (Product, Category, User, Order)
+- `app/utils.py` — Instance `db` (SQLAlchemy)
+- `app/services/` — Tempat query database dipanggil
 
 ## Referensi
 

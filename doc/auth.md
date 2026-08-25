@@ -332,10 +332,11 @@ flowchart TD
 
 ## File Terkait di Project Ini
 
-- `auth.py` — `hash_password()`, `check_password()`, `roles_required()` decorator
-- `routes.py` — Login/register endpoint, penggunaan decorator di route
-- `config.py` — JWT configuration (secret key, expiration time)
-- `models.py` — User model dengan kolom `role` dan `password_hash`
+- `app/middleware/auth.py` — `hash_password()`, `check_password()`, `roles_required()` decorator
+- `app/controllers/auth_controller.py` — Login/refresh endpoint
+- `app/controllers/` — Penggunaan `roles_required` decorator di route handler
+- `app/config.py` — JWT configuration (secret key, expiration time)
+- `app/models/user.py` — User model dengan kolom `role` dan `password_hash`
 
 ## Referensi
 

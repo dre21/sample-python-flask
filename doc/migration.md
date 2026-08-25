@@ -149,7 +149,7 @@ it has no name
 **Solusinya:** Definisikan **naming convention** di metadata SQLAlchemy, sehingga semua constraint (FK, PK, unique, index) otomatis punya nama yang konsisten:
 
 ```python
-# utils.py
+# app/utils.py
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 
@@ -185,8 +185,8 @@ Dengan naming convention ini, foreign key akan otomatis punya nama seperti `fk_p
 
 - `migrations/` — Folder berisi semua migration
 - `migrations/env.py` — Konfigurasi environment Alembic
-- `models.py` — Model yang di-track oleh migration
-- `app.py` — Tempat Flask-Migrate diinisialisasi
+- `app/models/` — Model yang di-track oleh migration
+- `app/__init__.py` — Tempat Flask-Migrate diinisialisasi
 
 ## Referensi
 

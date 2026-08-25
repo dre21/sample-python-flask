@@ -37,22 +37,22 @@ cd simple-shops
 
 # 2. Buat virtual environment
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Linux/Mac
+source venv/bin/activate   # Linux/Mac
+# venv\Scripts\activate    # Windows
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
 # 4. Setup environment variables
 # Copy .env.example menjadi .env, lalu isi dengan konfigurasi database kamu
-copy .env.example .env
+cp .env.example .env
 
 # 5. Jalankan migration database
 flask db upgrade
 
 # 6. (Opsional) Seed data contoh
-python -m helper.seed
-python -m helper.seed_order
+python -m app.helper.seed
+python -m app.helper.seed_order
 
 # 7. Jalankan server
 flask run
@@ -64,21 +64,76 @@ Setelah server berjalan, buka `http://localhost:5000/apidocs` untuk melihat doku
 
 ```
 simple-shops/
-├── app.py              # Application factory — membuat dan mengkonfigurasi Flask app
-├── config.py           # Kelas konfigurasi (baca dari .env)
-├── models.py           # Semua model SQLAlchemy (Product, Category, User, Order)
-├── routes.py           # Semua route handler (Blueprints)
-├── schemas.py          # DTO — validasi input & serialisasi output (Marshmallow)
-├── auth.py             # Helper password hashing & RBAC decorator
-├── errors.py           # Centralized error handler
-├── validation.py       # Validasi manual (legacy, digantikan schemas.py)
-├── utils.py            # Shared utilities (instance db)
+├── run.py              # Entry point — dijalankan oleh flask run / gunicorn
 ├── requirements.txt    # Dependencies
+├── Procfile            # Konfigurasi deployment (gunicorn)
 ├── .env                # Environment variables (tidak di-commit)
+├── .env.example        # Template untuk .env
 │
-├── migrations/         # Database migration scripts (Alembic)
-├── helper/             # Script seeding database
-└── doc/                # Dokumentasi lengkap (lihat di bawah)
+├── app/                # Semua source code aplikasi
+│   ├── __init__.py     # Application factory (init_app)
+│   ├── config.py       # Kelas konfigurasi (baca dari .env)
+│   ├── utils.py        # Shared utilities (instance db)
+│   │
+│   ├── models/         # SQLAlchemy models — satu file per resource
+│   │   ├── product.py  # Product model + order_products association table
+│   │   ├── category.py # Category model
+│   │   ├── user.py     # User model
+│   │   └── order.py    # Order model
+│   │
+│   ├── controllers/    # Route handlers (thin — parse request, call service, return response)
+│   │   ├── product_controller.py   # /store/products, /store/categories
+│   │   ├── user_controller.py      # /users
+│   │   ├── order_controller.py     # /orders
+│   │   └── auth_controller.py      # /auth
+│   │
+│   ├── services/       # Business logic — DB queries, validasi, transformasi
+│   │   ├── product_service.py
+│   │   ├── user_service.py
+│   │   ├── order_service.py
+│   │   └── auth_service.py
+│   │
+│   ├── schemas/        # DTO (Marshmallow) — validasi request & serialisasi response
+│   │   ├── product_schema.py
+│   │   ├── user_schema.py
+│   │   ├── order_schema.py
+│   │   └── auth_schema.py
+│   │
+│   ├── middleware/     # Cross-cutting concerns
+│   │   ├── auth.py     # hash_password, check_password, roles_required decorator
+│   │   └── errors.py   # Global JSON error handlers
+│   │
+│   └── helper/         # Database seeding scripts
+│       ├── seed.py     # Seed categories, products, users, orders
+│       └── seed_order.py # Seed orders saja
+│
+├── tests/              # Unit & integration tests
+│   ├── conftest.py     # Shared fixtures (in-memory SQLite)
+│   ├── test_product.py
+│   ├── test_user.py
+│   └── test_order.py
+│
+├── migrations/         # Alembic / Flask-Migrate database migrations
+│
+└── doc/                # Dokumentasi lengkap
+```
+
+## Perintah Development
+
+```bash
+# Jalankan server development
+flask run
+
+# Database migration
+flask db migrate -m "deskripsi perubahan"   # Buat migration baru
+flask db upgrade                            # Terapkan migration ke database
+
+# Seed database dengan data contoh
+python -m app.helper.seed            # Seed categories, products, users, orders
+python -m app.helper.seed_order      # Seed orders saja (butuh data user & product)
+
+# Jalankan tests
+python -m pytest tests/ -v
 ```
 
 ## Dokumentasi Lengkap
@@ -95,9 +150,16 @@ Untuk memahami konsep-konsep yang dipakai dalam project ini, baca dokumentasi be
 | [Database Migration](doc/migration.md) | Cara kelola perubahan skema database |
 | [Swagger / Dokumentasi API](doc/swagger.md) | Cara buat dokumentasi API otomatis |
 | [Logging](doc/logging.md) | Konsep logging (belum diimplementasi) |
-| [Arsitektur](doc/architecture.md) | Pola arsitektur MVC (belum diimplementasi) |
+| [Arsitektur](doc/architecture.md) | Pola arsitektur MVC / layered |
 
 ## Status Project
 
-Project ini masih dalam pengembangan. Saat ini masih menggunakan struktur flat (satu file per concern). Ke depannya akan di-refactor ke arsitektur MVC dengan controller, service, dan data access layer yang terpisah.
+Project ini menggunakan arsitektur **MVC / layered** dengan pemisahan yang jelas:
 
+| Layer | Tanggung Jawab |
+|-------|----------------|
+| **Controllers** | Parse request, panggil service, return JSON response |
+| **Services** | Business logic, DB queries, error handling |
+| **Models** | Struktur data — kolom, relasi, `to_dict()` |
+| **Schemas** | Validasi input (load) dan serialisasi output (dump) |
+| **Middleware** | Auth decorators, password hashing, global error handlers |

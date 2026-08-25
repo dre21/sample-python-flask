@@ -156,8 +156,8 @@ if 'max_price' in request.args:
 
 ## File Terkait di Project Ini
 
-- `routes.py` — Semua route handler
-- `app.py` — Tempat blueprint didaftarkan
+- `app/controllers/` — Semua route handler (satu file per resource)
+- `app/__init__.py` — Tempat blueprint didaftarkan
 
 ## Referensi
 
