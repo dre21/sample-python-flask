@@ -9,12 +9,16 @@ from middleware.errors import register_error_handlers
 from utils import db
 
 
-def init_app():
+def init_app(config_overrides=None):
     print("Initializing Flask app...")
     app = Flask(__name__)
 
     # Load configuration
     app.config.from_object(Config)
+
+    # Apply any overrides (e.g., test config) before initializing extensions
+    if config_overrides:
+        app.config.update(config_overrides)
 
     # Set up the database
     db.init_app(app)
