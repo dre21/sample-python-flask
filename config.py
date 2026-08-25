@@ -20,3 +20,17 @@ class Config:
         'version': '1.0.0',
         'description': 'A simple shop API with products, users, and orders',
     }
+
+    SWAGGER_TEMPLATE = {
+        "securityDefinitions": {
+            "Bearer": {
+                "type": "apiKey",
+                "name": "Authorization",
+                "in": "header",
+                "description": "JWT token. Enter: **Bearer <your-token>**"
+            }
+        },
+        "security": [
+            {"Bearer": []}
+        ]
+    }

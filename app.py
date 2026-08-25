@@ -25,8 +25,8 @@ def init_app():
     # Set up JWT
     jwt = JWTManager(app)  # noqa: F841
 
-    # Set up Swagger
-    swagger = Swagger(app)  # noqa: F841
+    # Set up Swagger with Bearer token authorization
+    swagger = Swagger(app, template=Config.SWAGGER_TEMPLATE)  # noqa: F841
 
     # Register blueprints
     print("Registering blueprints...")
