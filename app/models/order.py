@@ -1,5 +1,4 @@
 from app.utils import db
-from app.models.product import order_products
 
 
 class Order(db.Model):
@@ -12,13 +11,19 @@ class Order(db.Model):
     # Foreign key
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-    # Many-to-many relationship with products
-    products = db.relationship('Product', secondary=order_products, backref='orders')
+    # Relationship to OrderProduct (association model)
+    order_items = db.relationship('OrderProduct', back_populates='order')
 
     def to_dict(self):
         return {
             'id':       self.id,
             'total':    self.total,
             'user_id':  self.user_id,
-            'products': [product.to_dict() for product in self.products],
+            'products': [
+                {
+                    'product_id': item.product_id,
+                    'quantity':   item.quantity,
+                }
+                for item in self.order_items
+            ],
         }

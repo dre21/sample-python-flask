@@ -8,7 +8,7 @@ from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 
 from app.config import Config
-from app.models import Product, User, Category, Order  # noqa: F401 — needed for Migrate
+from app.models import Product, User, Category, Order, OrderProduct  # noqa: F401 — needed for Migrate
 from app.controllers import products_bp, users_bp, orders_bp, auth_bp
 from app.middleware.errors import register_error_handlers
 from app.utils import db

@@ -6,7 +6,7 @@ Run from the project root:
 
 from app import init_app
 from app.utils import db
-from app.models import Category, Product, User, Order, order_products
+from app.models import Category, Product, User, Order, OrderProduct
 from app.middleware.auth import hash_password
 
 
@@ -283,16 +283,25 @@ def seed_orders(users, products):
 
     created = 0
     for data in orders_data:
-        order_products_list = data['products']
-        total = sum(p.price for p in order_products_list)
+        product_list = data['products']
+        total = sum(p.price for p in product_list)
 
         order = Order(
             total=round(total, 2),
             user_id=data['user'].id,
             status=data['status'],
         )
-        order.products = order_products_list
         db.session.add(order)
+        db.session.flush()  # Get the order.id before creating OrderProduct rows
+
+        for product in product_list:
+            order_item = OrderProduct(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=1,
+            )
+            db.session.add(order_item)
+
         created += 1
 
     db.session.commit()
@@ -304,7 +313,7 @@ def run_seed():
     app = init_app()
     with app.app_context():
         # Clear existing data (order matters due to foreign keys)
-        db.session.execute(order_products.delete())
+        OrderProduct.query.delete()
         Order.query.delete()
         Product.query.delete()
         Category.query.delete()

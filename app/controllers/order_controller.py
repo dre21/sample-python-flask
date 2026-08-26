@@ -98,6 +98,8 @@ def get_order_by_id(order_id):
                     type: string
                   price:
                     type: number
+                  quantity:
+                    type: integer
       401:
         description: Unauthorized
       403:
