@@ -13,5 +13,5 @@ from app.schemas.product_schema import (
     ProductDetailSchema,
 )
 from app.schemas.user_schema import UserRegisterSchema, UserDetailSchema
-from app.schemas.order_schema import OrderProductSchema, OrderListSchema, OrderDetailSchema
+from app.schemas.order_schema import OrderProductSchema, OrderListSchema, OrderDetailSchema, OrderCreateSchema
 from app.schemas.auth_schema import LoginSchema

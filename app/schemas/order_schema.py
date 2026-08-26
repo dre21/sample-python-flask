@@ -1,8 +1,31 @@
 """
-Order schemas — response serialization.
+Order schemas — request validation and response serialization.
 """
 
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, validate
+
+
+# ─── Request Schemas (load) ───────────────────────────────────────────────────
+
+
+class OrderItemCreateSchema(Schema):
+    """DTO for a single item in a create order request."""
+
+    product_id = fields.Int(required=True)
+    quantity   = fields.Int(required=True, validate=validate.Range(min=1))
+
+
+class OrderCreateSchema(Schema):
+    """DTO for creating an order. Expects a list of product_id + quantity pairs."""
+
+    items = fields.List(
+        fields.Nested(OrderItemCreateSchema),
+        required=True,
+        validate=validate.Length(min=1),
+    )
+
+
+# ─── Response Schemas (dump) ──────────────────────────────────────────────────
 
 
 class OrderProductSchema(Schema):
@@ -45,6 +68,7 @@ class OrderDetailSchema(Schema):
     id       = fields.Int(dump_only=True)
     user_id  = fields.Method("get_username")
     total    = fields.Float()
+    status   = fields.Str()
     products = fields.List(fields.Nested(OrderProductSchema), attribute='order_items')
 
     def get_username(self, obj):
