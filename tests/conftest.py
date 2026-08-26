@@ -6,7 +6,7 @@ import pytest
 from flask_jwt_extended import create_access_token
 from app import init_app
 from app.utils import db as _db
-from app.models import Product, Category, User, Order
+from app.models import Product, Category, User, Order, OrderProduct
 
 
 @pytest.fixture(scope='class')
@@ -133,14 +133,13 @@ def seed_orders(app, seed_users, seed_products):
         _db.session.add_all([order1, order2])
         _db.session.commit()
 
-        # Attach products to orders via the association table
-        product1 = Product.query.get(1)  # Wireless Mouse
-        product2 = Product.query.get(2)  # Mechanical Keyboard
-        product3 = Product.query.get(3)  # Cotton T-Shirt
-
-        order1.products.append(product1)
-        order1.products.append(product2)
-        order2.products.append(product3)
+        # Attach products to orders via OrderProduct model
+        order_items = [
+            OrderProduct(order_id=1, product_id=1, quantity=1),  # Wireless Mouse
+            OrderProduct(order_id=1, product_id=2, quantity=1),  # Mechanical Keyboard
+            OrderProduct(order_id=2, product_id=3, quantity=1),  # Cotton T-Shirt
+        ]
+        _db.session.add_all(order_items)
         _db.session.commit()
 
 
