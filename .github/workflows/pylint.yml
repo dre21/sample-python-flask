@@ -28,7 +28,7 @@ jobs:
         pylint $(git ls-files '*.py') --exit-zero
 
     - name: Run Bandit (Code Vulnerability Scan)
-      run: bandit -r . -ll
+      run: bandit -r . -ll --exclude ./venv  
       continue-on-error: true
 
     - name: Run pip-audit (Dependency Vulnerability Scan)
