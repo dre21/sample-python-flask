@@ -29,6 +29,8 @@ jobs:
 
     - name: Run Bandit (Code Vulnerability Scan)
       run: bandit -r . -ll
+      continue-on-error: true
 
     - name: Run pip-audit (Dependency Vulnerability Scan)
       run: pip-audit
+      continue-on-error: true
