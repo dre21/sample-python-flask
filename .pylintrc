@@ -1,0 +1,6 @@
+[MAIN]
+# Ignore auto-generated migration files
+ignore-paths=migrations
+
+[FORMAT]
+max-line-length=120
