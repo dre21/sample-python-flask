@@ -2,8 +2,14 @@
 Product service — business logic for products and categories.
 """
 
+import logging
+
 from app.models import Product, Category
 from app.utils import db
+
+# Create a logger for this module
+# The name will be 'app.services.product_service' — helpful for tracing
+logger = logging.getLogger(__name__)
 
 
 def get_products(filters, page, per_page):
@@ -18,18 +24,27 @@ def get_products(filters, page, per_page):
     Returns:
         SQLAlchemy Pagination object
     """
+    logger.info("Fetching products — page=%d, per_page=%d", page, per_page)
+    logger.debug("Applied filters: %s", filters)
+
     query = Product.query
 
     if filters.get('name'):
         query = query.filter(Product.name.icontains(filters['name']))
+        logger.debug("Filter by name: '%s'", filters['name'])
 
     if filters.get('category_id') is not None:
         query = query.filter_by(category_id=filters['category_id'])
+        logger.debug("Filter by category_id: %d", filters['category_id'])
 
     if filters.get('max_price') is not None:
         query = query.filter(Product.price <= filters['max_price'])
+        logger.debug("Filter by max_price: %.2f", filters['max_price'])
 
-    return query.paginate(page=page, per_page=per_page, error_out=False)
+    result = query.paginate(page=page, per_page=per_page, error_out=False)
+    logger.info("Found %d products (page %d of %d)", result.total, result.page, result.pages)
+
+    return result
 
 
 def get_product_by_id(product_id):
@@ -52,6 +67,8 @@ def create_product(validated_data):
     if validated_data.get('category_id') is not None:
         category = Category.query.get(validated_data['category_id'])
         if category is None:
+            logger.warning("Create product failed — category_id=%d not found",
+                           validated_data['category_id'])
             return None, {
                 "message": f"Category with id {validated_data['category_id']} not found",
                 "status_code": 404
@@ -61,9 +78,11 @@ def create_product(validated_data):
         product = Product(**validated_data)
         db.session.add(product)
         db.session.commit()
+        logger.info("Product created — id=%d, name='%s'", product.id, product.name)
         return product, None
     except Exception as e:
         db.session.rollback()
+        logger.error("Error creating product: %s", e, exc_info=True)
         return None, {
             "message": "Error creating product",
             "details": str(e),

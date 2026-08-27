@@ -4,6 +4,8 @@ Product & Category controllers — route handlers for /store endpoints.
 These are thin: parse the request, call the service, return the response.
 """
 
+import logging
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 from marshmallow import ValidationError
@@ -16,6 +18,9 @@ from app.schemas import (
     ProductDetailSchema,
 )
 from app.services import product_service
+
+# Create a logger for this module
+logger = logging.getLogger(__name__)
 
 
 # ─── Schema instances (reusable, stateless) ───────────────────────────────────
@@ -108,7 +113,12 @@ def get_products():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
 
+    logger.info("GET /store/products — page=%d, per_page=%d", page, per_page)
+    logger.debug("Request args: %s", request.args.to_dict())
+
     pagination = product_service.get_products(filters, page, per_page)
+
+    logger.debug("Returning %d items to client", len(pagination.items))
 
     return jsonify({
         "products": product_list_schema.dump(pagination.items),
