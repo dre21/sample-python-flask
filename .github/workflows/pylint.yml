@@ -1,0 +1,38 @@
+name: Pylint
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit pip-audit pylint
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Analysing the code with pylint (Code Quality Scan)
+      run: |
+        pylint $(git ls-files '*.py') --exit-zero
+
+    - name: Run Bandit (Code Vulnerability Scan)
+      run: bandit -r . -ll --exclude ./venv  
+      continue-on-error: true
+
+    - name: Run pip-audit (Dependency Vulnerability Scan)
+      run: pip-audit
+      continue-on-error: true
